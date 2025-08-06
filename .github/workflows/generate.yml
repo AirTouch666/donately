@@ -79,17 +79,25 @@ jobs:
             '{name: $name, avatar: $avatar, date: $date, money: $money}')
             
           echo "Generated JSON data: $JSON_DATA"
-          # 将 JSON 数据写入文件而不是使用 GITHUB_OUTPUT
           echo "$JSON_DATA" > new-donation.json
           
       - name: Read existing donate.json
         id: read-donate
         run: |
+          # 确保 existing.json 始终是有效的 JSON 数组
           if [ -f "donate.json" ]; then
-            jq '.' donate.json > existing.json
+            # 验证现有文件是否有效
+            if jq -e '.' donate.json >/dev/null 2>&1; then
+              jq '.' donate.json > existing.json
+            else
+              echo "Existing donate.json is invalid, resetting to empty array"
+              echo "[]" > existing.json
+            fi
           else
+            echo "No existing donate.json, creating empty array"
             echo "[]" > existing.json
           fi
+          
           # 打印现有数据用于调试
           echo "Existing donate.json content:"
           cat existing.json
