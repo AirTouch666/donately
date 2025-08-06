@@ -17,11 +17,28 @@ jobs:
       - name: Get issue form data
         id: get-issue-data
         run: |
-          # Get form data from issue event
-          NAME='${{ github.event.issue.body }}' | grep -oP '(?<=### name\s*\n)[^\n]*'
-          AVATAR='${{ github.event.issue.body }}' | grep -oP '(?<=### avatar\s*\n)[^\n]*'
-          DATE='${{ github.event.issue.body }}' | grep -oP '(?<=### date\s*\n)[^\n]*'
-          MONEY='${{ github.event.issue.body }}' | grep -oP '(?<=### money\s*\n)[^\n]*'
+          # Get raw issue body
+          BODY=$(echo '${{ toJSON(github.event.issue.body) }}' | sed 's/\\n/\n/g')
+          echo "Raw issue body:"
+          echo "$BODY"
+          
+          # Extract each field using more compatible methods
+          NAME=$(echo "$BODY" | awk '/### name/{getline; print}')
+          AVATAR=$(echo "$BODY" | awk '/### avatar/{getline; print}')
+          DATE=$(echo "$BODY" | awk '/### date/{getline; print}')
+          MONEY=$(echo "$BODY" | awk '/### money/{getline; print}')
+          
+          # Trim whitespace from each field
+          NAME=$(echo "$NAME" | xargs)
+          AVATAR=$(echo "$AVATAR" | xargs)
+          DATE=$(echo "$DATE" | xargs)
+          MONEY=$(echo "$MONEY" | xargs)
+          
+          echo "Extracted values:"
+          echo "Name: $NAME"
+          echo "Avatar: $AVATAR"
+          echo "Date: $DATE"
+          echo "Money: $MONEY"
           
           # Create JSON object
           JSON_DATA=$(jq -n \
