@@ -17,28 +17,28 @@ jobs:
       - name: Get issue form data
         id: get-issue-data
         run: |
-          # Get raw issue body
-          BODY=$(echo '${{ toJSON(github.event.issue.body) }}' | sed 's/\\n/\n/g')
+          # Get raw issue body and convert to proper format
+          BODY=$(echo '${{ toJSON(github.event.issue.body) }}' | sed 's/\\n/\n/g' | sed 's/^"//;s/"$//')
           echo "Raw issue body:"
           echo "$BODY"
           
-          # Extract each field using more compatible methods
-          NAME=$(echo "$BODY" | awk '/### name/{getline; print}')
-          AVATAR=$(echo "$BODY" | awk '/### avatar/{getline; print}')
-          DATE=$(echo "$BODY" | awk '/### date/{getline; print}')
-          MONEY=$(echo "$BODY" | awk '/### money/{getline; print}')
-          
-          # Trim whitespace from each field
-          NAME=$(echo "$NAME" | xargs)
-          AVATAR=$(echo "$AVATAR" | xargs)
-          DATE=$(echo "$DATE" | xargs)
-          MONEY=$(echo "$MONEY" | xargs)
+          # Improved field extraction using sed
+          NAME=$(echo "$BODY" | sed -n '/### name/{n;p}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          AVATAR=$(echo "$BODY" | sed -n '/### avatar/{n;p}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          DATE=$(echo "$BODY" | sed -n '/### date/{n;p}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          MONEY=$(echo "$BODY" | sed -n '/### money/{n;p}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
           
           echo "Extracted values:"
-          echo "Name: $NAME"
-          echo "Avatar: $AVATAR"
-          echo "Date: $DATE"
-          echo "Money: $MONEY"
+          echo "Name: '$NAME'"
+          echo "Avatar: '$AVATAR'"
+          echo "Date: '$DATE'"
+          echo "Money: '$MONEY'"
+          
+          # Validate required fields
+          if [ -z "$NAME" ] || [ -z "$DATE" ] || [ -z "$MONEY" ]; then
+            echo "::error::Missing required fields (name, date or money)"
+            exit 1
+          fi
           
           # Create JSON object
           JSON_DATA=$(jq -n \
