@@ -17,16 +17,46 @@ jobs:
       - name: Get issue form data
         id: get-issue-data
         run: |
-          # Get raw issue body and convert to proper format
-          BODY=$(echo '${{ toJSON(github.event.issue.body) }}' | sed 's/\\n/\n/g' | sed 's/^"//;s/"$//')
+          # 获取原始 issue body
+          RAW_BODY='${{ toJSON(github.event.issue.body) }}'
           echo "Raw issue body:"
-          echo "$BODY"
+          echo "$RAW_BODY"
           
-          # Improved field extraction using sed
-          NAME=$(echo "$BODY" | sed -n '/### name/{n;p}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-          AVATAR=$(echo "$BODY" | sed -n '/### avatar/{n;p}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-          DATE=$(echo "$BODY" | sed -n '/### date/{n;p}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-          MONEY=$(echo "$BODY" | sed -n '/### money/{n;p}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          # 清理和准备 body 内容
+          CLEAN_BODY=$(echo "$RAW_BODY" | sed -e 's/^"//' -e 's/"$//' -e 's/\\n/\n/g' -e 's/\\"/"/g')
+          echo "Cleaned issue body:"
+          echo "$CLEAN_BODY"
+          
+          # 使用强大的 awk 解析器提取字段值
+          NAME=$(echo "$CLEAN_BODY" | awk -F'\n' '
+            BEGIN { in_name = 0 }
+            /^### name$/ { in_name = 1; next }
+            in_name && !/^###/ && !/^$/ { print; in_name = 0 }
+          ')
+          
+          AVATAR=$(echo "$CLEAN_BODY" | awk -F'\n' '
+            BEGIN { in_avatar = 0 }
+            /^### avatar$/ { in_avatar = 1; next }
+            in_avatar && !/^###/ && !/^$/ { print; in_avatar = 0 }
+          ')
+          
+          DATE=$(echo "$CLEAN_BODY" | awk -F'\n' '
+            BEGIN { in_date = 0 }
+            /^### date$/ { in_date = 1; next }
+            in_date && !/^###/ && !/^$/ { print; in_date = 0 }
+          ')
+          
+          MONEY=$(echo "$CLEAN_BODY" | awk -F'\n' '
+            BEGIN { in_money = 0 }
+            /^### money$/ { in_money = 1; next }
+            in_money && !/^###/ && !/^$/ { print; in_money = 0 }
+          ')
+          
+          # 修剪空白
+          NAME=$(echo "$NAME" | xargs)
+          AVATAR=$(echo "$AVATAR" | xargs)
+          DATE=$(echo "$DATE" | xargs)
+          MONEY=$(echo "$MONEY" | xargs)
           
           echo "Extracted values:"
           echo "Name: '$NAME'"
@@ -34,13 +64,13 @@ jobs:
           echo "Date: '$DATE'"
           echo "Money: '$MONEY'"
           
-          # Validate required fields
+          # 验证必填字段
           if [ -z "$NAME" ] || [ -z "$DATE" ] || [ -z "$MONEY" ]; then
             echo "::error::Missing required fields (name, date or money)"
             exit 1
           fi
           
-          # Create JSON object
+          # 创建 JSON 对象
           JSON_DATA=$(jq -n \
             --arg name "$NAME" \
             --arg avatar "$AVATAR" \
@@ -63,10 +93,10 @@ jobs:
           
       - name: Update donate.json
         run: |
-          # Combine existing data with new data
+          # 合并现有数据和新数据
           UPDATED_DATA=$(echo '${{ steps.read-donate.outputs.existing_data }}' | jq --argjson new "${{ steps.get-issue-data.outputs.json_data }}" '. += [$new]')
           echo "$UPDATED_DATA" > donate.json
-          # Format JSON
+          # 格式化 JSON
           jq '.' donate.json > temp.json && mv temp.json donate.json
           
       - name: Commit and push changes
