@@ -3,6 +3,7 @@ name: Process Donation Issue
 on:
   issues:
     types: [opened]
+  workflow_dispatch:
 
 jobs:
   process-donation:
