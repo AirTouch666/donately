@@ -3,7 +3,6 @@ name: Process Donation Issue
 on:
   issues:
     types: [opened]
-  workflow_dispatch:
 
 jobs:
   process-donation:
@@ -13,27 +12,33 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: output
+          fetch-depth: 0
           
-      - name: Get issue JSON data
+      - name: Get issue form data
         id: get-issue-data
         run: |
-          # Extract JSON from issue body
-          JSON_DATA=$(echo '${{ github.event.issue.body }}' | grep -oP '```json\n\K.*?(?=\n```)' || echo '')
-          if [ -z "$JSON_DATA" ]; then
-            echo "No valid JSON data found in issue"
-            exit 1
-          fi
-          # Validate JSON
-          echo "$JSON_DATA" | jq empty
-          # Escape JSON for output
-          ESCAPED_JSON=$(echo "$JSON_DATA" | jq -c '.' | sed 's/"/\\"/g')
-          echo "json_data=$ESCAPED_JSON" >> $GITHUB_OUTPUT
+          # Get form data from issue event
+          NAME='${{ github.event.issue.body }}' | grep -oP '(?<=### name\s*\n)[^\n]*'
+          AVATAR='${{ github.event.issue.body }}' | grep -oP '(?<=### avatar\s*\n)[^\n]*'
+          DATE='${{ github.event.issue.body }}' | grep -oP '(?<=### date\s*\n)[^\n]*'
+          MONEY='${{ github.event.issue.body }}' | grep -oP '(?<=### money\s*\n)[^\n]*'
+          
+          # Create JSON object
+          JSON_DATA=$(jq -n \
+            --arg name "$NAME" \
+            --arg avatar "$AVATAR" \
+            --arg date "$DATE" \
+            --arg money "$MONEY" \
+            '{name: $name, avatar: $avatar, date: $date, money: $money}')
+            
+          echo "Generated JSON data: $JSON_DATA"
+          echo "json_data=$JSON_DATA" >> $GITHUB_OUTPUT
           
       - name: Read existing donate.json
         id: read-donate
         run: |
           if [ -f "donate.json" ]; then
-            EXISTING_DATA=$(cat donate.json | jq -c '.' | sed 's/"/\\"/g')
+            EXISTING_DATA=$(cat donate.json | jq -c '.' 2>/dev/null || echo "[]")
             echo "existing_data=$EXISTING_DATA" >> $GITHUB_OUTPUT
           else
             echo "existing_data=[]" >> $GITHUB_OUTPUT
