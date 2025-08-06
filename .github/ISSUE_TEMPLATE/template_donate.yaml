@@ -1,18 +1,23 @@
 name: 赞助模板
 description: 自助添加赞助
 body:
-  - type: textarea
-    id: config-file
-    validations:
-      required: true
+  - type: input
+    id: name
     attributes:
-      label: 赞助信息
-      value: |
-        ```json
-        {
-            "name": "",
-            "avatar": "",
-            "date": "",
-            "money": ""
-        }
-        ```
+      label: name
+      description: name
+  - type: input
+    id: avatar
+    attributes:
+      label: avatar
+      description: avatar
+  - type: input
+    id: date
+    attributes:
+      label: date
+      description: date
+  - type: input
+    id: money
+    attributes:
+      label: money
+      description: money
