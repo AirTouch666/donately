@@ -79,25 +79,32 @@ jobs:
             '{name: $name, avatar: $avatar, date: $date, money: $money}')
             
           echo "Generated JSON data: $JSON_DATA"
-          echo "json_data=$JSON_DATA" >> $GITHUB_OUTPUT
+          # 将 JSON 数据写入文件而不是使用 GITHUB_OUTPUT
+          echo "$JSON_DATA" > new-donation.json
           
       - name: Read existing donate.json
         id: read-donate
         run: |
           if [ -f "donate.json" ]; then
-            EXISTING_DATA=$(cat donate.json | jq -c '.' 2>/dev/null || echo "[]")
-            echo "existing_data=$EXISTING_DATA" >> $GITHUB_OUTPUT
+            jq '.' donate.json > existing.json
           else
-            echo "existing_data=[]" >> $GITHUB_OUTPUT
+            echo "[]" > existing.json
           fi
+          # 打印现有数据用于调试
+          echo "Existing donate.json content:"
+          cat existing.json
           
       - name: Update donate.json
         run: |
-          # 合并现有数据和新数据
-          UPDATED_DATA=$(echo '${{ steps.read-donate.outputs.existing_data }}' | jq --argjson new "${{ steps.get-issue-data.outputs.json_data }}" '. += [$new]')
-          echo "$UPDATED_DATA" > donate.json
+          # 合并现有数据与新数据
+          jq --slurp '.[0] + [.[1]]' existing.json new-donation.json > donate.json
+          
           # 格式化 JSON
           jq '.' donate.json > temp.json && mv temp.json donate.json
+          
+          # 打印更新后的数据用于调试
+          echo "Updated donate.json content:"
+          cat donate.json
           
       - name: Commit and push changes
         run: |
