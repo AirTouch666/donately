@@ -2,7 +2,7 @@ name: Process Donation Issue
 
 on:
   issues:
-    types: [opened]
+    types: [opened, edited]
 
 jobs:
   process-donation:
