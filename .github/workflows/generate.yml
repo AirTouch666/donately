@@ -13,7 +13,6 @@ jobs:
         with:
           ref: output
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}  # 添加 GITHUB_TOKEN
           
       - name: Get issue form data
         id: get-issue-data
@@ -116,9 +115,13 @@ jobs:
           cat donate.json
           
       - name: Commit and push changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git fetch origin output || true
+          git checkout -B output
           git add donate.json
           git commit -m "Add donation from issue #${{ github.event.issue.number }}"
-          git push origin output
+          git push -f origin output
